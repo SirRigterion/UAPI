@@ -6,19 +6,37 @@ from src.db.database import Base, engine, startup as db_startup
 from src.db.models import Role
 from sqlalchemy.future import select
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="UAPI", description="API для управления пользователями и чатами")
+app = FastAPI(title="API Чата", description="API для управления пользователями и чатами")
 
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(chat_router)
 
+async def wait_for_db(max_attempts=10, delay=2):
+    """Ожидание готовности базы данных с повторными попытками."""
+    attempt = 1
+    while attempt <= max_attempts:
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(select(1))
+            logger.info("База данных доступна")
+            return
+        except Exception as e:
+            logger.warning(f"Попытка {attempt}/{max_attempts} подключения к базе данных не удалась: {e}")
+            if attempt == max_attempts:
+                raise Exception("Не удалось подключиться к базе данных после всех попыток")
+            await asyncio.sleep(delay)
+        attempt += 1
+
 @app.on_event("startup")
 async def startup():
     """Инициализация приложения при запуске."""
     try:
+        await wait_for_db()  # Ожидание базы данных
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         
@@ -35,7 +53,6 @@ async def startup():
                 await conn.commit()
                 logger.info("Роли по умолчанию успешно созданы")
         
-        # Инициализация базы данных и Redis (если используется)
         await db_startup()
         logger.info("Приложение успешно запущено")
     except Exception as e:
