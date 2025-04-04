@@ -3,7 +3,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from src.db.database import Base
 from datetime import datetime
-
+from sqlalchemy import Enum as SAEnum
+from src.task.enums import TaskStatus
 # Пользователи
 class User(Base):
     __tablename__ = "users"
@@ -66,7 +67,9 @@ class Task(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(5000), nullable=True)
-    status: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(
+        SAEnum(TaskStatus, length=50), nullable=False, default=TaskStatus.ACTIVE
+    )
     priority: Mapped[str] = mapped_column(String(50), nullable=False)
     due_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
