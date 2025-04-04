@@ -1,4 +1,4 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import text
@@ -34,7 +34,7 @@ async def init_redis() -> redis.Redis | None:
         return redis_client
     except (redis.ConnectionError, asyncio.TimeoutError) as e:
         logger.error(f"Не удалось подключиться к Redis: {e}")
-        redis_client = None  # Устанавливаем None, если подключение не удалось
+        redis_client = None
         return None
     except Exception as e:
         logger.error(f"Неизвестная ошибка при подключении к Redis: {e}")

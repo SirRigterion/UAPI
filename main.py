@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from src.auth.routes import router as auth_router
 from src.user.routes import router as user_router
 from src.chat.routes import router as chat_router
+from src.article.routes import router as article_router
+from src.task.routes import router as task_router
+from src.admin.routes import router as admin_router
 from src.db.database import Base, engine, startup as db_startup
 from src.db.models import Role
 from sqlalchemy.future import select
@@ -10,14 +13,16 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="API Чата", description="API для управления пользователями и чатами")
+app = FastAPI(title="API Чата")
 
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(chat_router)
+app.include_router(article_router)
+app.include_router(task_router)
+app.include_router(admin_router)
 
 async def wait_for_db(max_attempts=10, delay=2):
-    """Ожидание готовности базы данных с повторными попытками."""
     attempt = 1
     while attempt <= max_attempts:
         try:
@@ -34,7 +39,6 @@ async def wait_for_db(max_attempts=10, delay=2):
 
 @app.on_event("startup")
 async def startup():
-    """Инициализация приложения при запуске."""
     try:
         await wait_for_db()  # Ожидание базы данных
         async with engine.begin() as conn:
