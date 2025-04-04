@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 class ArticleCreate(BaseModel):
     title: str
@@ -12,28 +12,30 @@ class ArticleUpdate(BaseModel):
     content: Optional[str] = None
     image_path: Optional[str] = None
 
+# schemas.py
+class ArticleImageResponse(BaseModel):
+    id: int
+    image_path: str
+
 class ArticleResponse(BaseModel):
     id: int
     title: str
     content: str
-    image_path: Optional[str]
     author_id: int
     created_at: datetime
     updated_at: datetime
+    images: List[ArticleImageResponse]
     is_deleted: bool
 
     class Config:
         from_attributes = True
 
-class ArticleImage(BaseModel):
-    id: int
-    article_id: int
-    image_path: str
-
 class ArticleHistoryResponse(BaseModel):
     id: int
     article_id: int
-    editor_id: int
+    user_id: int
+    event: str
+    changed_at: datetime
     title: str
     content: str
     image_path: Optional[str]

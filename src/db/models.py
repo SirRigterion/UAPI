@@ -45,9 +45,14 @@ class Article(Base):
     content: Mapped[str] = mapped_column(String(5000), nullable=False)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP, 
+        default=func.now(),
+        onupdate=func.now()
+    )
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     deleted_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
-    images = relationship("ArticleImage", back_populates="article")
+    images = relationship("ArticleImage", back_populates="article", lazy="selectin")
 
 # Изображения статей
 class ArticleImage(Base):

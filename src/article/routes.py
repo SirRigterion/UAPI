@@ -7,7 +7,8 @@ from src.auth.auth import get_current_user
 from src.db.models import User, Article, ArticleHistory
 from src.db.database import get_db
 from src.core.config import settings
-from src.article.schemas import ArticleImage, ArticleResponse, ArticleHistoryResponse
+from src.article.schemas import ArticleResponse, ArticleHistoryResponse
+from src.db.models import ArticleImage
 from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/articles", tags=["articles"])
@@ -53,7 +54,7 @@ async def create_article(
         db.add(ArticleImage(article_id=article.id, image_path=file_path))
     
     await db.commit()
-    await db.refresh(article)
+    await db.refresh(article, ["images"])
     
     return article
 
