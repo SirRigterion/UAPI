@@ -1,29 +1,24 @@
-# Примерно так в alembic/env.py
-import os
-import sys
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
 from alembic import context
-
-sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
+from sqlalchemy import engine_from_config, pool
+from logging.config import fileConfig
 
 from src.core.config import settings
-from src.db.database import Base
-from src.db.models import *
+from src.db.models import Base
+
+# Alembic config
 config = context.config
+config.set_main_option("sqlalchemy.url", settings.SYNC_DATABASE_URL.replace('%', '%%'))
 
-config.set_main_option('sqlalchemy.url', settings.SYNC_DATABASE_URL)
-
-if config.config_file_name is not None:
+# Enable logging
+if config.config_file_name:
     fileConfig(config.config_file_name)
 
-target_metadata = Base.metadata 
+# Metadata from models
+target_metadata = Base.metadata
 
-def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url")
+def run_migrations_offline():
     context.configure(
-        url=url,
+        url=settings.SYNC_DATABASE_URL.replace('%', '%%'),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -33,7 +28,7 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online():
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
