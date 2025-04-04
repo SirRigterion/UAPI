@@ -21,31 +21,29 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 @router.post("/register", response_model=UserProfile)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    try:
-        result = await db.execute(
-            select(User).where((User.email == user.email) | (User.username == user.username))
-        )
-        if result.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Электронная почта или имя пользователя уже зарегистрированы")
-        
-        hashed_password = hash_password(user.password)
-        new_user = User(
-            username=user.username,
-            email=user.email,
-            hashed_password=hashed_password
-        )
-        db.add(new_user)
-        await db.commit()
-        await db.refresh(new_user)
-        
-        token = create_access_token(data={"sub": user.email})
-        response = Response(status_code=201)
-        set_auth_cookie(response, token)
-        logger.info(f"Пользователь {user.username} успешно зарегистрирован")
-        return new_user
-    except Exception as e:
-        logger.error(f"Ошибка при регистрации пользователя: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка сервера при регистрации")
+    result = await db.execute(
+        select(User).where((User.email == user.email) | (User.username == user.username))
+    )
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Email or username already registered")
+    
+    hashed_password = hash_password(user.password)
+    
+    new_user = User(
+        username=user.username,
+        full_name=user.full_name,
+        email=user.email,
+        hashed_password=hashed_password,
+        role_id=1
+    )
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    
+    token = create_access_token(data={"sub": user.email})
+    response = Response(status_code=201)
+    set_auth_cookie(response, token)
+    return new_user
 
 @router.post("/login")
 async def login(user: UserLogin, db: AsyncSession = Depends(get_db)):

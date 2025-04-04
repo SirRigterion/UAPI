@@ -92,6 +92,14 @@ class TaskPriority(str, Enum):
     MEDIUM = "Средний"
     HIGH = "Высокий"
 
+class TaskHistory(Base):
+    __tablename__ = "task_history"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+    event: Mapped[str] = mapped_column(String(50))
+    changed_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
+
 class Task(Base):
     __tablename__ = "tasks"
     

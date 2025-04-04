@@ -17,7 +17,7 @@ class Settings:
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
-
+    UPLOAD_DIR:  str = os.getenv("UPLOAD_DIR", "redis://localhost:6379")
     @property
     def ASYNC_DATABASE_URL(self) -> str:
         password = quote(self.POSTGRES_PASSWORD) if self.POSTGRES_PASSWORD else ""
