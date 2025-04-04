@@ -7,7 +7,7 @@ from src.auth.auth import get_current_user
 from src.db.models import User, Article, ArticleHistory
 from src.db.database import get_db
 from src.core.config import settings
-from src.article.schemas import ArticleCreate, ArticleImage, ArticleUpdate, ArticleResponse, ArticleHistoryResponse, AticleImages
+from src.article.schemas import ArticleImage, ArticleResponse, ArticleHistoryResponse
 from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/articles", tags=["articles"])
@@ -37,6 +37,7 @@ async def create_article(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Создаем статью
     article = Article(title=title, content=content, author_id=current_user.user_id)
     db.add(article)
     await db.commit()
@@ -44,11 +45,16 @@ async def create_article(
 
     for image in images:
         file_path = f"{settings.UPLOAD_DIR}/article_{article.id}_{image.filename}"
+        
         async with aiofiles.open(file_path, 'wb') as out_file:
             content = await image.read()
             await out_file.write(content)
+        
         db.add(ArticleImage(article_id=article.id, image_path=file_path))
+    
     await db.commit()
+    await db.refresh(article)
+    
     return article
 
 @router.put("/{id}", response_model=ArticleResponse)
