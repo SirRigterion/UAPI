@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import update
 from src.auth.auth import get_current_user
 from src.db.models import User, Article, ArticleHistory
 from src.db.database import get_db
@@ -43,11 +42,10 @@ async def update_article(
     result = await db.execute(select(Article).where(Article.id == id, Article.is_deleted == False))
     article = result.scalar_one_or_none()
     if not article:
-        raise HTTPException(status_code=404, detail="Article not found")
+        raise HTTPException(status_code=404, detail="Статья не найдена")
     if article.author_id != current_user.user_id and current_user.role_id != 2:
-        raise HTTPException(status_code=403, detail="Not authorized")
+        raise HTTPException(status_code=403, detail="Не авторизовано")
 
-    # Сохраняем историю изменений
     history = ArticleHistory(
         article_id=article.id,
         editor_id=current_user.user_id,
@@ -57,7 +55,6 @@ async def update_article(
     )
     db.add(history)
 
-    # Обновляем статью
     if article_data.title:
         article.title = article_data.title
     if article_data.content:
@@ -78,13 +75,13 @@ async def delete_article(
     result = await db.execute(select(Article).where(Article.id == id, Article.is_deleted == False))
     article = result.scalar_one_or_none()
     if not article:
-        raise HTTPException(status_code=404, detail="Article not found")
+        raise HTTPException(status_code=404, detail="Статья не найдена")
     if article.author_id != current_user.user_id and current_user.role_id != 2:
-        raise HTTPException(status_code=403, detail="Not authorized")
+        raise HTTPException(status_code=403, detail="Не авторизовано")
 
     article.is_deleted = True
     await db.commit()
-    return {"message": "Article marked as deleted"}
+    return {"message": "Статья отмечена как удаленная"}
 
 @router.post("/{id}/restore", response_model=ArticleResponse)
 async def restore_article(
@@ -101,9 +98,9 @@ async def restore_article(
     )
     article = result.scalar_one_or_none()
     if not article:
-        raise HTTPException(status_code=404, detail="Article not found or cannot be restored")
+        raise HTTPException(status_code=404, detail="Статья не найдена or cannot be restored")
     if article.author_id != current_user.user_id and current_user.role_id != 2:
-        raise HTTPException(status_code=403, detail="Not authorized")
+        raise HTTPException(status_code=403, detail="Не авторизовано")
 
     article.is_deleted = False
     await db.commit()
@@ -119,9 +116,9 @@ async def get_article_history(
     result = await db.execute(select(Article).where(Article.id == id, Article.is_deleted == False))
     article = result.scalar_one_or_none()
     if not article:
-        raise HTTPException(status_code=404, detail="Article not found")
+        raise HTTPException(status_code=404, detail="Статья не найдена")
     if article.author_id != current_user.user_id and current_user.role_id != 2:
-        raise HTTPException(status_code=403, detail="Not authorized")
+        raise HTTPException(status_code=403, detail="Не авторизовано")
 
     result = await db.execute(select(ArticleHistory).where(ArticleHistory.article_id == id))
     history = result.scalars().all()

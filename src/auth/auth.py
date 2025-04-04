@@ -1,7 +1,7 @@
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from src.core.config import settings
-from fastapi import HTTPException, status, Depends, Request
+from fastapi import HTTPException, Depends, Request
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -20,10 +20,10 @@ def verify_token(token: str) -> str:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(status_code=401, detail="Недействительный токен")
         return email
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="Недействительный токен")
 
 def set_auth_cookie(response: Response, token: str) -> None:
     response.set_cookie(
@@ -37,10 +37,10 @@ def set_auth_cookie(response: Response, token: str) -> None:
 async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)) -> User:
     token = request.cookies.get("access_token")
     if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail="Не аутентифицирован")
     email = verify_token(token)
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
     return user

@@ -6,14 +6,16 @@ from src.article.routes import router as article_router
 from src.task.routes import router as task_router
 from src.admin.routes import router as admin_router
 from src.db.database import Base, engine, startup as db_startup
-from src.db.models import Role
+from src.db.models import Role, User
 from sqlalchemy.future import select
+from src.auth.routes import hash_password
+from src.core.config import settings
 import logging
 import asyncio
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="API Чата")
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.PROJECT_VERSION)
 
 app.include_router(auth_router)
 app.include_router(user_router)
@@ -56,7 +58,25 @@ async def startup():
                 )
                 await conn.commit()
                 logger.info("Роли по умолчанию успешно созданы")
-        
+
+            result = await conn.execute(select(User).where(User.email == "admin@example.com"))
+            admin_user = result.scalar_one_or_none()
+            if not admin_user:
+                hashed_password = hash_password("string111")
+                await conn.execute(
+                    User.__table__.insert().values({
+                        "username": "admin",
+                        "full_name": "Админ Админов",
+                        "email": "admin@example.com",
+                        "hashed_password": hashed_password,
+                        "role_id": 2
+                    })
+                )
+                await conn.commit()
+                logger.info("Стандартный администратор успешно создан")
+            else:
+                logger.info("Стандартный администратор уже существует")
+
         await db_startup()
         logger.info("Приложение успешно запущено")
     except Exception as e:

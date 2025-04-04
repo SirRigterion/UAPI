@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional
 
 class UserProfile(BaseModel):
     user_id: int
@@ -16,6 +16,6 @@ class UserProfile(BaseModel):
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
-
+    
 class UserSearch(BaseModel):
     limit: int = 10  

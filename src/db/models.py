@@ -51,7 +51,9 @@ class Message(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     content: Mapped[str] = mapped_column(String(2000), nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
-
+    
+    user = relationship("User")
+    
 class Article(Base):
     __tablename__ = "articles"
     
@@ -102,6 +104,5 @@ class Task(Base):
     author_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     assignee_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
-    
     author = relationship("User", foreign_keys=[author_id])
     assignee = relationship("User", foreign_keys=[assignee_id])

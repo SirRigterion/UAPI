@@ -10,10 +10,8 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
-# Создаем асинхронный движок для PostgreSQL
 engine = create_async_engine(settings.ASYNC_DATABASE_URL, echo=False)
 
-# Создаем фабрику сессий
 async_session = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
@@ -24,11 +22,9 @@ Base = declarative_base()
 redis_client = None
 
 async def init_redis() -> redis.Redis | None:
-    """Инициализация подключения к Redis с обработкой ошибок."""
     global redis_client
     try:
         redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
-        # Проверка подключения с тайм-аутом
         await asyncio.wait_for(redis_client.ping(), timeout=5.0)
         logger.info("Подключение к Redis успешно")
         return redis_client
@@ -42,14 +38,12 @@ async def init_redis() -> redis.Redis | None:
         return None
 
 async def get_redis() -> redis.Redis | None:
-    """Получение клиента Redis с проверкой его доступности."""
     if redis_client is None:
         logger.warning("Redis недоступен, попытка повторного подключения")
         await init_redis()
     return redis_client
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Получение сессии базы данных."""
     async with async_session() as session:
         try:
             yield session
@@ -58,10 +52,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
 
 async def test_db_connection() -> None:
-    """Проверка подключения к базе данных."""
     try:
         async with engine.connect() as conn:
-            # Используем text() для raw SQL-запроса
             result = await conn.scalar(text("SELECT 1"))
             if result != 1:
                 raise ValueError("Неожиданный результат тестового запроса к базе данных")
@@ -71,6 +63,5 @@ async def test_db_connection() -> None:
         raise
 
 async def startup() -> None:
-    """Инициализация при запуске приложения."""
     await test_db_connection()
     await init_redis()

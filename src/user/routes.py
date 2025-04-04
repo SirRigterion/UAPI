@@ -1,11 +1,11 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import or_
 from src.db.database import get_db
 from src.auth.auth import get_current_user
 from src.db.models import User
-from src.user.schemas import UserProfile, UserUpdate, UserSearch
+from src.user.schemas import UserProfile, UserUpdate
 import aiofiles
 import os
 from src.core.config import settings
@@ -28,7 +28,7 @@ async def update_profile(
             select(User).where(User.username == user_update.username)
         )
         if result.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Username already taken")
+            raise HTTPException(status_code=400, detail="Имя пользователя уже занято")
         current_user.username = user_update.username
 
     if photo:
@@ -41,7 +41,7 @@ async def update_profile(
     
     await db.commit()
     await db.refresh(current_user)
-    return {"message": "Profile updated"}
+    return {"message": "Профиль обновлен"}
 
 @router.get("/profile/{user_id}", response_model=UserProfile)
 async def get_user_profile(
@@ -52,34 +52,34 @@ async def get_user_profile(
     result = await db.execute(select(User).where(User.user_id == user_id, User.is_deleted == False))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
     return user
 
-@router.post("/search", response_model=list[UserProfile])
+@router.get("/search", response_model=list[UserProfile])
 async def search_users(
-    search_data: UserSearch,
+    username: Optional[str] = None,
+    full_name: Optional[str] = None,
+    email: Optional[str] = None,
+    role_id: Optional[int] = None,
+    limit: int = 10,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role_id != 2:  # Только админ может искать
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Ограничение только для администраторов, если нужно
+    # if current_user.role_id != 2:
+    #     raise HTTPException(status_code=403, detail="Not authorized")
 
     query = select(User).where(User.is_deleted == False)
-    conditions = []
+    if username:
+        query = query.where(User.username.ilike(f"%{username}%"))
+    if full_name:
+        query = query.where(User.full_name.ilike(f"%{full_name}%"))
+    if email:
+        query = query.where(User.email.ilike(f"%{email}%"))
+    if role_id:
+        query = query.where(User.role_id == role_id)
     
-    for column, value in search_data.filters.items():
-        if column in ["username", "full_name", "email"]:
-            conditions.append(getattr(User, column).ilike(f"%{value}%"))
-        elif column == "role_id":
-            try:
-                conditions.append(User.role_id == int(value))
-            except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid value for {column}")
-
-    if conditions:
-        query = query.where(or_(*conditions))
-    
-    query = query.limit(search_data.limit)
+    query = query.limit(limit)
     result = await db.execute(query)
     users = result.scalars().all()
     return users

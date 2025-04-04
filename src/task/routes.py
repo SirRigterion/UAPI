@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import or_
 from src.auth.auth import get_current_user
 from src.db.models import User, Task, TaskStatus
 from src.db.database import get_db
@@ -43,13 +42,15 @@ async def create_task(
     result = await db.execute(select(User).where(User.user_id == task_data.assignee_id, User.is_deleted == False))
     assignee = result.scalar_one_or_none()
     if not assignee:
-        raise HTTPException(status_code=404, detail="Assignee not found")
+        raise HTTPException(status_code=404, detail="Вы не администратор")
+
+    due_date = task_data.due_date.replace(tzinfo=None) if task_data.due_date else None
 
     task = Task(
         title=task_data.title,
         description=task_data.description,
         priority=task_data.priority,
-        due_date=task_data.due_date,
+        due_date=due_date,
         author_id=current_user.user_id,
         assignee_id=task_data.assignee_id
     )
@@ -68,9 +69,9 @@ async def update_task_status(
     result = await db.execute(select(Task).where(Task.id == id))
     task = result.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise HTTPException(status_code=404, detail="Задача не найдена")
     if task.author_id != current_user.user_id and task.assignee_id != current_user.user_id and current_user.role_id != 2:
-        raise HTTPException(status_code=403, detail="Not authorized")
+        raise HTTPException(status_code=403, detail="Не авторизовано")
 
     task.status = status_data.status
     await db.commit()

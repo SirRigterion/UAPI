@@ -6,9 +6,8 @@ from typing import Optional
 load_dotenv()
 
 class Settings:
-    PROJECT_NAME: str = "APIUser"
-    PROJECT_VERSION: str = "1.0.0"
-    
+    PROJECT_NAME: str = "APITTK"
+    PROJECT_VERSION: str = "1.0.1"
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
     POSTGRES_PASSWORD: Optional[str] = os.getenv("POSTGRES_PASSWORD")
     POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
@@ -41,6 +40,5 @@ class Settings:
 
 settings = Settings()
 
-if __name__ == "__main__":
-    print(f"Async Database URL: {settings.ASYNC_DATABASE_URL}")
-    print(f"Sync Database URL: {settings.SYNC_DATABASE_URL}")
+#     print(f"Async Database URL: {settings.ASYNC_DATABASE_URL}")
+#     print(f"Sync Database URL: {settings.SYNC_DATABASE_URL}")

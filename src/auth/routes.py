@@ -1,29 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Request
+import logging
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from src.db.database import get_db
 from src.auth.schemas import UserCreate, UserLogin
 from src.user.schemas import UserProfile
 from src.db.models import User
-from src.auth.auth import create_access_token, verify_token, set_auth_cookie, get_current_user
+from src.auth.auth import create_access_token, set_auth_cookie, get_current_user
 import bcrypt
-import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/auth", tags=["авторизация"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 def hash_password(password: str) -> str:
-    """Хеширование пароля с использованием bcrypt."""
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Проверка пароля на соответствие хешу."""
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 @router.post("/register", response_model=UserProfile)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    """Регистрация нового пользователя."""
     try:
         result = await db.execute(
             select(User).where((User.email == user.email) | (User.username == user.username))

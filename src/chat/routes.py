@@ -17,7 +17,6 @@ router = APIRouter(prefix="/chat", tags=["чат"])
 # Хранилище активных WebSocket-соединений
 connected_clients: Dict[int, List[WebSocket]] = {}
 
-# Создание чата
 @router.post("/create", response_model=dict)
 async def create_chat(
     chat_data: ChatCreate,
@@ -38,7 +37,6 @@ async def create_chat(
     await db.commit()
     return {"chat_id": chat.chat_id, "сообщение": "Чат успешно создан"}
 
-# Приглашение пользователя в чат
 @router.post("/{chat_id}/invite", response_model=dict)
 async def invite_to_chat(
     chat_id: int,
@@ -69,7 +67,6 @@ async def invite_to_chat(
     await db.commit()
     return {"сообщение": f"Пользователь {user.username} приглашен в чат {chat_id}"}
 
-# Отправка сообщения через HTTP (с уведомлением через WebSocket)
 @router.post("/{chat_id}/send", response_model=MessageResponse)
 async def send_message(
     chat_id: int,
@@ -99,7 +96,6 @@ async def send_message(
     )
     msg_json = msg_response.model_dump_json()
 
-    # Проверка доступности Redis
     redis_client = await get_redis()
     if redis_client:
         try:
@@ -139,7 +135,6 @@ async def websocket_chat(
     connected_clients[chat_id].append(websocket)
 
     try:
-        # Проверка кэша в Redis
         redis_client = await get_redis()
         if redis_client:
             try:
@@ -174,7 +169,6 @@ async def websocket_chat(
                     await redis_client.ltrim(f"chat:{chat_id}", 0, 99)
                 except Exception as e:
                     logger.error(f"Ошибка при записи в Redis: {e}")
-
             for client in connected_clients[chat_id]:
                 await client.send_text(msg_json)
 
@@ -188,7 +182,6 @@ async def websocket_chat(
         if not connected_clients[chat_id]:
             del connected_clients[chat_id]
 
-# Получение списка чатов пользователя
 @router.get("/list", response_model=ChatListResponse)
 async def list_user_chats(
     db: AsyncSession = Depends(get_db),
@@ -211,21 +204,20 @@ async def list_user_chats(
     ]
 
     return ChatListResponse(chats=chat_infos)
-
-# Получение истории сообщений чата
-@router.get("/{chat_id}/history", response_model=MessageHistoryResponse)
+@router.get("/{chat_id}/history", response_model=list[dict])
 async def get_chat_history(
     chat_id: int,
-    skip: int = Query(0, ge=0, description="Количество сообщений для пропуска"),
-    limit: int = Query(50, ge=1, le=200, description="Максимальное количество возвращаемых сообщений"),
+    skip: int = 0,
+    limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     result = await db.execute(
         select(ChatMember).where(ChatMember.chat_id == chat_id, ChatMember.user_id == current_user.user_id)
     )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=403, detail="Вы не являетесь участником этого чата")
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not authorized to view this chat")
 
     result = await db.execute(
         select(Message)
@@ -237,25 +229,14 @@ async def get_chat_history(
     )
     messages = result.scalars().all()
 
-    message_responses = [
-        MessageResponse(
-            message_id=msg.message_id,
-            chat_id=msg.chat_id,
-            user_id=msg.user_id,
-            username=msg.user.username if msg.user else "Неизвестный пользователь",
-            content=msg.content,
-            created_at=msg.created_at
-        ) for msg in messages
+    return [
+        {
+            "message_id": msg.message_id,
+            "chat_id": msg.chat_id,
+            "user_id": msg.user_id,
+            "username": msg.user.username,
+            "content": msg.content,
+            "created_at": msg.created_at
+        }
+        for msg in messages
     ]
-
-    count_result = await db.execute(
-        select(func.count(Message.message_id)).where(Message.chat_id == chat_id)
-    )
-    total_messages = count_result.scalar_one()
-
-    return MessageHistoryResponse(
-        messages=list(reversed(message_responses)),
-        total_messages=total_messages,
-        skip=skip,
-        limit=limit
-    )
