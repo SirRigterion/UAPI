@@ -48,7 +48,8 @@ class Article(Base):
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP, 
         default=func.now(),
-        onupdate=func.now()
+        onupdate=func.now(),
+        nullable=False
     )
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     deleted_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
