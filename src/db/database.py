@@ -69,3 +69,8 @@ async def test_db_connection() -> None:
     except Exception as e:
         logger.error(f"Ошибка подключения к базе данных: {e}")
         raise
+
+async def startup() -> None:
+    """Инициализация при запуске приложения."""
+    await test_db_connection()
+    await init_redis()
