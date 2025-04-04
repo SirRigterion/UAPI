@@ -2,25 +2,21 @@ from pydantic import BaseModel, validator
 from typing import Optional
 
 class TaskCreate(BaseModel):
-    title: str
-    description: Optional[str] = None
-    status: str = "ACTIVE"  # Default to "ACTIVE" as a string
-    priority: str = "MEDIUM"  # Default to "MEDIUM" as a string
-    due_date: Optional[str] = None
-    assignee_id: Optional[int] = None
-
+    status: str = "ACTIVE"
+    priority: str = "MEDIUM"
+    
     @validator("status")
     def validate_status(cls, value):
         valid_statuses = {"ACTIVE", "POSTPONED", "COMPLETED"}
         if value not in valid_statuses:
-            raise ValueError(f"Status must be one of {valid_statuses}")
+            raise ValueError(f"Invalid status: {value}")
         return value
-
+    
     @validator("priority")
     def validate_priority(cls, value):
         valid_priorities = {"LOW", "MEDIUM", "HIGH"}
         if value not in valid_priorities:
-            raise ValueError(f"Priority must be one of {valid_priorities}")
+            raise ValueError(f"Invalid priority: {value}")
         return value
 
 class TaskResponse(BaseModel):

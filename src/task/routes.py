@@ -16,23 +16,12 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 @router.post("/", response_model=TaskResponse)
 async def create_task(task: TaskCreate, db: AsyncSession = Depends(get_db)):
-    # Fetch status and priority IDs from the database
-    status_result = await db.execute(select(TaskStatus).where(TaskStatus.status_name == task.status))
-    status = status_result.scalar_one_or_none()
-    if not status:
-        raise HTTPException(status_code=400, detail="Invalid status")
-
-    priority_result = await db.execute(select(TaskPriority).where(TaskPriority.priority_name == task.priority))
-    priority = priority_result.scalar_one_or_none()
-    if not priority:
-        raise HTTPException(status_code=400, detail="Invalid priority")
-
-    # Create the task with status_id and priority_id
+    # Удаляем проверки статуса и приоритета через таблицы
     db_task = Task(
         title=task.title,
         description=task.description,
-        status_id=status.status_id,
-        priority_id=priority.priority_id,
+        status=task.status,  # Используем строку напрямую
+        priority=task.priority,  # Используем строку напрямую
         due_date=task.due_date,
         author_id=1,
         assignee_id=task.assignee_id
@@ -113,10 +102,15 @@ async def update_task(
 @router.put("/{id}/status", response_model=TaskResponse)
 async def update_task_status(
     id: int,
-    status: TaskStatus,
+    status: str,  # Меняем тип на str
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Добавляем валидацию статуса
+    valid_statuses = {"ACTIVE", "POSTPONED", "COMPLETED"}
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
     result = await db.execute(select(Task).where(Task.id == id, Task.is_deleted == False))
     task = result.scalar_one_or_none()
     if not task:

@@ -4,18 +4,6 @@ from sqlalchemy.sql import func
 from src.db.database import Base
 from datetime import datetime
 
-# Статусы задач (таблица)
-class TaskStatus(Base):
-    __tablename__ = "task_statuses"
-    status_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    status_name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-
-# Приоритеты задач (таблица)
-class TaskPriority(Base):
-    __tablename__ = "task_priorities"
-    priority_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    priority_name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-
 # Пользователи
 class User(Base):
     __tablename__ = "users"
@@ -78,18 +66,17 @@ class Task(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(5000), nullable=True)
-    status_id: Mapped[int] = mapped_column(ForeignKey("task_statuses.status_id"), default=1, nullable=False)
-    priority_id: Mapped[int] = mapped_column(ForeignKey("task_priorities.priority_id"), default=2, nullable=False)
+    # Заменяем внешние ключи на строковые поля
+    status: Mapped[str] = mapped_column(String(50), default="ACTIVE", nullable=False)
+    priority: Mapped[str] = mapped_column(String(50), default="MEDIUM", nullable=False)
     due_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     assignee_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     deleted_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
-    status = relationship("TaskStatus")
-    priority = relationship("TaskPriority")
     images = relationship("TaskImage", back_populates="task")
-    
+
 # Изображения задач
 class TaskImage(Base):
     __tablename__ = "task_images"
