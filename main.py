@@ -43,8 +43,6 @@ async def wait_for_db(max_attempts=10, delay=2):
 async def startup():
     try:
         await wait_for_db()  # Ожидание базы данных
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
         
         async with engine.connect() as conn:
             # Инициализация ролей

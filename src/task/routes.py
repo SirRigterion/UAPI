@@ -1,24 +1,10 @@
 from datetime import datetime
-import aiofiles
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlalchemy import func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from src.auth.auth import get_current_user
-from src.db.models import TaskHistory, TaskPriority, User, Task, TaskStatus
-from src.db.database import get_db
-from src.task.schemas import TaskCreate, TaskResponse
-from src.core.config import settings
-from typing import List, Optional
-
-router = APIRouter(prefix="/tasks", tags=["tasks"])
-
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func
 from src.auth.auth import get_current_user
-from src.db.models import User, Task, TaskImage, TaskHistory
+from src.db.models import TaskPriority, User, Task, TaskImage, TaskHistory
 from src.db.database import get_db
 from src.task.schemas import TaskCreate, TaskResponse, TaskStatus
 from typing import Optional, List
@@ -29,46 +15,32 @@ import os
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 @router.post("/", response_model=TaskResponse)
-async def create_task(
-    task_data: TaskCreate = Depends(),
-    images: List[UploadFile] = File([]),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    result = await db.execute(select(User).where(User.user_id == task_data.assignee_id, User.is_deleted == False))
-    assignee = result.scalar_one_or_none()
-    if not assignee:
-        raise HTTPException(status_code=404, detail="Assignee not found")
+async def create_task(task: TaskCreate, db: AsyncSession = Depends(get_db)):
+    # Fetch status and priority IDs from the database
+    status_result = await db.execute(select(TaskStatus).where(TaskStatus.status_name == task.status))
+    status = status_result.scalar_one_or_none()
+    if not status:
+        raise HTTPException(status_code=400, detail="Invalid status")
 
-    due_date = task_data.due_date.replace(tzinfo=None) if task_data.due_date else None
-    task = Task(
-        title=task_data.title,
-        description=task_data.description,
-        priority=task_data.priority,
-        due_date=due_date,
-        author_id=current_user.user_id,
-        assignee_id=task_data.assignee_id
+    priority_result = await db.execute(select(TaskPriority).where(TaskPriority.priority_name == task.priority))
+    priority = priority_result.scalar_one_or_none()
+    if not priority:
+        raise HTTPException(status_code=400, detail="Invalid priority")
+
+    # Create the task with status_id and priority_id
+    db_task = Task(
+        title=task.title,
+        description=task.description,
+        status_id=status.status_id,
+        priority_id=priority.priority_id,
+        due_date=task.due_date,
+        author_id=1,
+        assignee_id=task.assignee_id
     )
-    db.add(task)
+    db.add(db_task)
     await db.commit()
-    await db.refresh(task)
-
-    # Добавляем запись о создании задачи
-    db.add(TaskHistory(task_id=task.id, user_id=current_user.user_id, event="create"))
-
-    # Сохранение изображений
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    for image in images:
-        file_path = f"{settings.UPLOAD_DIR}/task_{task.id}_{image.filename}"
-        async with aiofiles.open(file_path, 'wb') as out_file:
-            content = await image.read()
-            await out_file.write(content)
-        db.add(TaskImage(task_id=task.id, image_path=file_path))
-        db.add(TaskHistory(task_id=task.id, user_id=current_user.user_id, event="image_create"))
-    
-    await db.commit()
-    await db.refresh(task)
-    return task
+    await db.refresh(db_task)
+    return db_task
 
 @router.get("/", response_model=List[TaskResponse])
 async def get_tasks(

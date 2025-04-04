@@ -89,7 +89,7 @@ class Task(Base):
     status = relationship("TaskStatus")
     priority = relationship("TaskPriority")
     images = relationship("TaskImage", back_populates="task")
-
+    
 # Изображения задач
 class TaskImage(Base):
     __tablename__ = "task_images"
