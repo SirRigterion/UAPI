@@ -1,42 +1,33 @@
-from pydantic import BaseModel, validator
-from typing import Optional
+from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional, List
+from src.db.models import TaskStatus, TaskPriority
 
 class TaskCreate(BaseModel):
-    status: str = "ACTIVE"
-    priority: str = "MEDIUM"
-    
-    @validator("status")
-    def validate_status(cls, value):
-        valid_statuses = {"ACTIVE", "POSTPONED", "COMPLETED"}
-        if value not in valid_statuses:
-            raise ValueError(f"Invalid status: {value}")
-        return value
-    
-    @validator("priority")
-    def validate_priority(cls, value):
-        valid_priorities = {"LOW", "MEDIUM", "HIGH"}
-        if value not in valid_priorities:
-            raise ValueError(f"Invalid priority: {value}")
-        return value
+    title: str
+    description: Optional[str] = None
+    priority: TaskPriority = TaskPriority.MEDIUM
+    due_date: Optional[datetime] = None
+    assignee_id: int
+
+class TaskImageResponse(BaseModel):
+    id: int
+    image_path: str
+
+    class Config:
+        from_attributes = True
 
 class TaskResponse(BaseModel):
     id: int
     title: str
     description: Optional[str]
-    status: str
-    priority: str
-    due_date: Optional[str]
+    status: TaskStatus
+    priority: TaskPriority
+    due_date: Optional[datetime]
     author_id: int
-    assignee_id: Optional[int]
-    created_at: str
-    is_deleted: bool
-
-    class Config:
-        from_attributes = True
-
-class TaskImageResponse(BaseModel):
-    id: int
-    image_path: str
+    assignee_id: int
+    created_at: datetime
+    images: List[TaskImageResponse] = []
 
     class Config:
         from_attributes = True

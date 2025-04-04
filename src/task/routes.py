@@ -1,10 +1,25 @@
 from datetime import datetime
+import aiofiles
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from src.auth.auth import get_current_user
+from src.db.models import TaskHistory, User, Task
+from src.task.enums import TaskPriority, TaskStatus
+from src.db.database import get_db
+from src.task.schemas import TaskCreate, TaskResponse
+from src.core.config import settings
+from typing import List, Optional
+
+router = APIRouter(prefix="/tasks", tags=["tasks"])
+
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func
 from src.auth.auth import get_current_user
-from src.db.models import TaskPriority, User, Task, TaskImage, TaskHistory
+from src.db.models import User, Task, TaskImage, TaskHistory
 from src.db.database import get_db
 from src.task.schemas import TaskCreate, TaskResponse, TaskStatus
 from typing import Optional, List
@@ -15,21 +30,46 @@ import os
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 @router.post("/", response_model=TaskResponse)
-async def create_task(task: TaskCreate, db: AsyncSession = Depends(get_db)):
-    # Удаляем проверки статуса и приоритета через таблицы
-    db_task = Task(
-        title=task.title,
-        description=task.description,
-        status=task.status,  # Используем строку напрямую
-        priority=task.priority,  # Используем строку напрямую
-        due_date=task.due_date,
-        author_id=1,
-        assignee_id=task.assignee_id
+async def create_task(
+    task_data: TaskCreate = Depends(),
+    images: List[UploadFile] = File([]),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(select(User).where(User.user_id == task_data.assignee_id, User.is_deleted == False))
+    assignee = result.scalar_one_or_none()
+    if not assignee:
+        raise HTTPException(status_code=404, detail="Assignee not found")
+
+    due_date = task_data.due_date.replace(tzinfo=None) if task_data.due_date else None
+    task = Task(
+        title=task_data.title,
+        description=task_data.description,
+        priority=task_data.priority,
+        due_date=due_date,
+        author_id=current_user.user_id,
+        assignee_id=task_data.assignee_id
     )
-    db.add(db_task)
+    db.add(task)
     await db.commit()
-    await db.refresh(db_task)
-    return db_task
+    await db.refresh(task)
+
+    # Добавляем запись о создании задачи
+    db.add(TaskHistory(task_id=task.id, user_id=current_user.user_id, event="create"))
+
+    # Сохранение изображений
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    for image in images:
+        file_path = f"{settings.UPLOAD_DIR}/task_{task.id}_{image.filename}"
+        async with aiofiles.open(file_path, 'wb') as out_file:
+            content = await image.read()
+            await out_file.write(content)
+        db.add(TaskImage(task_id=task.id, image_path=file_path))
+        db.add(TaskHistory(task_id=task.id, user_id=current_user.user_id, event="image_create"))
+    
+    await db.commit()
+    await db.refresh(task)
+    return task
 
 @router.get("/", response_model=List[TaskResponse])
 async def get_tasks(
@@ -102,15 +142,10 @@ async def update_task(
 @router.put("/{id}/status", response_model=TaskResponse)
 async def update_task_status(
     id: int,
-    status: str,  # Меняем тип на str
+    status: TaskStatus,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Добавляем валидацию статуса
-    valid_statuses = {"ACTIVE", "POSTPONED", "COMPLETED"}
-    if status not in valid_statuses:
-        raise HTTPException(status_code=400, detail="Invalid status")
-    
     result = await db.execute(select(Task).where(Task.id == id, Task.is_deleted == False))
     task = result.scalar_one_or_none()
     if not task:
