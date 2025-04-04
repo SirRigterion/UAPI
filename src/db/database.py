@@ -11,7 +11,7 @@ import asyncio
 logger = logging.getLogger(__name__)
 
 # Создаем асинхронный движок для PostgreSQL
-engine = create_async_engine(settings.DATABASE_URL, echo=False)
+engine = create_async_engine(settings.ASYNC_DATABASE_URL, echo=False)
 
 # Создаем фабрику сессий
 async_session = sessionmaker(
@@ -69,17 +69,3 @@ async def test_db_connection() -> None:
     except Exception as e:
         logger.error(f"Ошибка подключения к базе данных: {e}")
         raise
-
-async def startup() -> None:
-    """Инициализация при запуске приложения."""
-    await test_db_connection()
-    await init_redis()
-
-# Пример использования в коде FastAPI (добавьте это в основной файл приложения)
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.on_event("startup")
-async def on_startup():
-    await startup()

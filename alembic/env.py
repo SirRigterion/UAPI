@@ -1,25 +1,24 @@
-from logging.config import fileConfig
-from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
-from src.db.database import Base
+from sqlalchemy import engine_from_config, pool
+from logging.config import fileConfig
+
 from src.core.config import settings
+from src.db.models import Base
 
-# Настройка логирования
+# Alembic config
 config = context.config
-config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.SYNC_DATABASE_URL.replace('%', '%%'))
 
-if config.config_file_name is not None:
+# Enable logging
+if config.config_file_name:
     fileConfig(config.config_file_name)
 
-# Метаданные для миграций
+# Metadata from models
 target_metadata = Base.metadata
 
-def run_migrations_offline() -> None:
-    """Запуск миграций в оффлайн-режиме."""
-    url = config.get_main_option("sqlalchemy.url")
+def run_migrations_offline():
     context.configure(
-        url=url,
+        url=settings.SYNC_DATABASE_URL.replace('%', '%%'),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -27,24 +26,16 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
-async def do_run_migrations():
-    """Асинхронный запуск миграций."""
-    connectable = create_async_engine(
-        settings.DATABASE_URL,
+def run_migrations_online():
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section),
+        prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        echo=True
     )
-    async with connectable.connect() as connection:
-        await connection.run_sync(lambda sync_conn: context.configure(
-            connection=sync_conn,
-            target_metadata=target_metadata
-        ))
-        await connection.run_sync(lambda sync_conn: context.run_migrations())
-
-def run_migrations_online() -> None:
-    """Запуск миграций в онлайн-режиме."""
-    import asyncio
-    asyncio.run(do_run_migrations())
+    with connectable.connect() as connection:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
 
 if context.is_offline_mode():
     run_migrations_offline()

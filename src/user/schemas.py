@@ -18,5 +18,4 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
 
 class UserSearch(BaseModel):
-    filters: Dict[str, str]  # Например, {"username": "john", "full_name": "Иван"}
-    limit: int = 10  # Максимальное количество возвращаемых пользователей
+    limit: int = 10  
