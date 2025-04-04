@@ -12,8 +12,7 @@ class ArticleUpdate(BaseModel):
     content: Optional[str] = None
     image_path: Optional[str] = None
 
-# schemas.py
-class ArticleImageResponse(BaseModel):
+class ArticleImage(BaseModel):
     id: int
     image_path: str
 
@@ -24,7 +23,7 @@ class ArticleResponse(BaseModel):
     author_id: int
     created_at: datetime
     updated_at: datetime
-    images: List[ArticleImageResponse]
+    images: List[ArticleImage]
     is_deleted: bool
 
     class Config:
