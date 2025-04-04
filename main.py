@@ -5,8 +5,9 @@ from src.chat.routes import router as chat_router
 from src.article.routes import router as article_router
 from src.task.routes import router as task_router
 from src.admin.routes import router as admin_router
-from src.db.database import Base, engine, startup as db_startup
-from src.db.models import Role, User, TaskStatus, TaskPriority
+from src.db.database import engine, startup as db_startup
+from src.db.models import Role, User
+from src.task.enums import TaskStatus, TaskPriority
 from sqlalchemy.future import select
 from src.auth.routes import hash_password
 from src.core.config import settings
