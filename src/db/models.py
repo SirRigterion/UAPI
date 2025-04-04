@@ -66,9 +66,8 @@ class Task(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(5000), nullable=True)
-    # Заменяем внешние ключи на строковые поля
-    status: Mapped[str] = mapped_column(String(50), default="ACTIVE", nullable=False)
-    priority: Mapped[str] = mapped_column(String(50), default="MEDIUM", nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False)
+    priority: Mapped[str] = mapped_column(String(50), nullable=False)
     due_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     assignee_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))

@@ -1,11 +1,12 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
-from src.db.models import TaskStatus, TaskPriority
+from src.task.enums import TaskStatus, TaskPriority
 
 class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
+    status: TaskStatus = TaskStatus.ACTIVE
     priority: TaskPriority = TaskPriority.MEDIUM
     due_date: Optional[datetime] = None
     assignee_id: int
