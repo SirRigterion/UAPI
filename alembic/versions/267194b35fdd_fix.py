@@ -1,8 +1,8 @@
-"""Initial migration
+"""fix
 
-Revision ID: 0e7d1b2bc5e2
+Revision ID: 267194b35fdd
 Revises: 
-Create Date: 2025-04-04 20:02:06.934349
+Create Date: 2025-04-04 22:43:47.261997
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '0e7d1b2bc5e2'
+revision: str = '267194b35fdd'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -30,6 +30,18 @@ def upgrade() -> None:
     sa.Column('role_id', sa.Integer(), nullable=False),
     sa.Column('role_name', sa.String(length=50), nullable=False),
     sa.PrimaryKeyConstraint('role_id')
+    )
+    op.create_table('task_priorities',
+    sa.Column('priority_id', sa.Integer(), nullable=False),
+    sa.Column('priority_name', sa.String(length=50), nullable=False),
+    sa.PrimaryKeyConstraint('priority_id'),
+    sa.UniqueConstraint('priority_name')
+    )
+    op.create_table('task_statuses',
+    sa.Column('status_id', sa.Integer(), nullable=False),
+    sa.Column('status_name', sa.String(length=50), nullable=False),
+    sa.PrimaryKeyConstraint('status_id'),
+    sa.UniqueConstraint('status_name')
     )
     op.create_table('users',
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -53,6 +65,7 @@ def upgrade() -> None:
     sa.Column('content', sa.String(length=5000), nullable=False),
     sa.Column('author_id', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.TIMESTAMP(), nullable=False),
+    sa.Column('updated_at', sa.TIMESTAMP(), nullable=False),
     sa.Column('is_deleted', sa.Boolean(), nullable=False),
     sa.Column('deleted_at', sa.TIMESTAMP(), nullable=True),
     sa.ForeignKeyConstraint(['author_id'], ['users.user_id'], ),
@@ -81,8 +94,8 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=255), nullable=False),
     sa.Column('description', sa.String(length=5000), nullable=True),
-    sa.Column('status', sa.Enum('ACTIVE', 'POSTPONED', 'COMPLETED', name='taskstatus'), nullable=False),
-    sa.Column('priority', sa.Enum('LOW', 'MEDIUM', 'HIGH', name='taskpriority'), nullable=False),
+    sa.Column('status_id', sa.Integer(), nullable=False),
+    sa.Column('priority_id', sa.Integer(), nullable=False),
     sa.Column('due_date', sa.TIMESTAMP(), nullable=True),
     sa.Column('author_id', sa.Integer(), nullable=False),
     sa.Column('assignee_id', sa.Integer(), nullable=False),
@@ -91,6 +104,8 @@ def upgrade() -> None:
     sa.Column('deleted_at', sa.TIMESTAMP(), nullable=True),
     sa.ForeignKeyConstraint(['assignee_id'], ['users.user_id'], ),
     sa.ForeignKeyConstraint(['author_id'], ['users.user_id'], ),
+    sa.ForeignKeyConstraint(['priority_id'], ['task_priorities.priority_id'], ),
+    sa.ForeignKeyConstraint(['status_id'], ['task_statuses.status_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('article_history',
@@ -142,6 +157,8 @@ def downgrade() -> None:
     op.drop_table('articles')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
+    op.drop_table('task_statuses')
+    op.drop_table('task_priorities')
     op.drop_table('roles')
     op.drop_table('chats')
     # ### end Alembic commands ###

@@ -6,7 +6,7 @@ from src.article.routes import router as article_router
 from src.task.routes import router as task_router
 from src.admin.routes import router as admin_router
 from src.db.database import Base, engine, startup as db_startup
-from src.db.models import Role, User
+from src.db.models import Role, User, TaskStatus, TaskPriority
 from sqlalchemy.future import select
 from src.auth.routes import hash_password
 from src.core.config import settings
@@ -47,6 +47,7 @@ async def startup():
             await conn.run_sync(Base.metadata.create_all)
         
         async with engine.connect() as conn:
+            # Инициализация ролей
             result = await conn.execute(select(Role))
             roles = result.fetchall()
             if not roles:
@@ -56,9 +57,35 @@ async def startup():
                         {"role_id": 2, "role_name": "администратор"}
                     ])
                 )
-                await conn.commit()
                 logger.info("Роли по умолчанию успешно созданы")
 
+            # Инициализация статусов задач
+            result = await conn.execute(select(TaskStatus))
+            statuses = result.fetchall()
+            if not statuses:
+                await conn.execute(
+                    TaskStatus.__table__.insert().values([
+                        {"status_id": 1, "status_name": "ACTIVE"},
+                        {"status_id": 2, "status_name": "POSTPONED"},
+                        {"status_id": 3, "status_name": "COMPLETED"}
+                    ])
+                )
+                logger.info("Статусы задач по умолчанию успешно созданы")
+
+            # Инициализация приоритетов задач
+            result = await conn.execute(select(TaskPriority))
+            priorities = result.fetchall()
+            if not priorities:
+                await conn.execute(
+                    TaskPriority.__table__.insert().values([
+                        {"priority_id": 1, "priority_name": "LOW"},
+                        {"priority_id": 2, "priority_name": "MEDIUM"},
+                        {"priority_id": 3, "priority_name": "HIGH"}
+                    ])
+                )
+                logger.info("Приоритеты задач по умолчанию успешно созданы")
+
+            # Инициализация администратора
             result = await conn.execute(select(User).where(User.email == "admin@example.com"))
             admin_user = result.scalar_one_or_none()
             if not admin_user:
@@ -72,10 +99,11 @@ async def startup():
                         "role_id": 2
                     })
                 )
-                await conn.commit()
                 logger.info("Стандартный администратор успешно создан")
             else:
                 logger.info("Стандартный администратор уже существует")
+
+            await conn.commit()  # Коммит всех изменений
 
         await db_startup()
         logger.info("Приложение успешно запущено")

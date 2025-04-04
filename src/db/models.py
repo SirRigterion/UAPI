@@ -1,20 +1,20 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP, Enum
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from src.db.database import Base
 from datetime import datetime
-from enum import Enum as PyEnum
 
-# Перечисления для задач
-class TaskStatus(PyEnum):
-    ACTIVE = "ACTIVE"
-    POSTPONED = "POSTPONED"
-    COMPLETED = "COMPLETED"
+# Статусы задач (таблица)
+class TaskStatus(Base):
+    __tablename__ = "task_statuses"
+    status_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    status_name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
-class TaskPriority(PyEnum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
+# Приоритеты задач (таблица)
+class TaskPriority(Base):
+    __tablename__ = "task_priorities"
+    priority_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    priority_name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
 # Пользователи
 class User(Base):
@@ -46,7 +46,7 @@ class Article(Base):
     author_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, 
+        TIMESTAMP,
         default=func.now(),
         onupdate=func.now(),
         nullable=False
@@ -78,14 +78,16 @@ class Task(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(5000), nullable=True)
-    status: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus), default=TaskStatus.ACTIVE)
-    priority: Mapped[TaskPriority] = mapped_column(Enum(TaskPriority), default=TaskPriority.MEDIUM)
+    status_id: Mapped[int] = mapped_column(ForeignKey("task_statuses.status_id"), default=1, nullable=False)
+    priority_id: Mapped[int] = mapped_column(ForeignKey("task_priorities.priority_id"), default=2, nullable=False)
     due_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     assignee_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     deleted_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
+    status = relationship("TaskStatus")
+    priority = relationship("TaskPriority")
     images = relationship("TaskImage", back_populates="task")
 
 # Изображения задач
