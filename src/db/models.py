@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -51,7 +52,6 @@ class ArticleImage(Base):
     article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), nullable=False)
     image_path: Mapped[str] = mapped_column(String(255), nullable=False)
     article = relationship("Article", back_populates="images")
-
 # История статей
 class ArticleHistory(Base):
     __tablename__ = "article_history"
@@ -59,6 +59,9 @@ class ArticleHistory(Base):
     article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"))
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     event: Mapped[str] = mapped_column(String(50))
+    changed_title: Mapped[str] = mapped_column(String(255), nullable=True)
+    changed_content: Mapped[str] = mapped_column(String(5000), nullable=True)
+    edited_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
     changed_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
 
 # Задачи

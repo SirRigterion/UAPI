@@ -15,6 +15,9 @@ class ArticleImage(BaseModel):
     id: int
     image_path: str
 
+    class Config:
+        from_attributes = True 
+
 class ArticleResponse(BaseModel):
     id: int
     title: str

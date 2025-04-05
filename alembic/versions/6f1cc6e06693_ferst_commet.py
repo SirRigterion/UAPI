@@ -1,8 +1,8 @@
 """ferst commet
 
-Revision ID: 09a2264b7e1d
+Revision ID: 6f1cc6e06693
 Revises: 
-Create Date: 2025-04-05 07:01:26.717462
+Create Date: 2025-04-05 08:51:14.627272
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '09a2264b7e1d'
+revision: str = '6f1cc6e06693'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -99,6 +99,9 @@ def upgrade() -> None:
     sa.Column('article_id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('event', sa.String(length=50), nullable=False),
+    sa.Column('changed_title', sa.String(length=255), nullable=True),
+    sa.Column('changed_content', sa.String(length=5000), nullable=True),
+    sa.Column('edited_at', sa.TIMESTAMP(), nullable=False),
     sa.Column('changed_at', sa.TIMESTAMP(), nullable=False),
     sa.ForeignKeyConstraint(['article_id'], ['articles.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ),
