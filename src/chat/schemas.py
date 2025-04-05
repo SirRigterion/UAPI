@@ -5,14 +5,14 @@ from datetime import datetime
 #Схемы запросов
 
 class ChatCreate(BaseModel):
-    chat_name: str = Field(..., min_length=1, max_length=100, description="Название нового чата")
-    member_ids: List[int] = Field([], description="Необязательный список идентификаторов пользователей для приглашения в чат при создании")
+    chat_name: str = Field(..., min_length=1, max_length=100)
+    member_ids: List[int] = Field([])
 
 class ChatInvite(BaseModel):
-    user_id: int = Field(..., description="Идентификатор пользователя, которого нужно пригласить")
+    user_id: int = Field(...)
 
 class MessageCreate(BaseModel):
-    content: str = Field(..., min_length=1, max_length=2000, description="Содержимое сообщения")
+    content: str = Field("", min_length=1, max_length=2000)
 
 # Схемы ответов
 

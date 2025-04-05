@@ -2,10 +2,10 @@ from pydantic import BaseModel, validator, EmailStr
 import re
 
 class UserCreate(BaseModel):
-    username: str
-    full_name: str
-    email: EmailStr
-    password: str
+    username: str = "user"
+    full_name: str = "Иван Иванович Иванов"
+    email: EmailStr = "user@example.com"
+    password: str = "string111"
 
     @validator('username')
     def validate_username(cls, value):
@@ -28,5 +28,5 @@ class UserCreate(BaseModel):
         return value
 
 class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+    email: EmailStr = "user@example.com"
+    password: str = "string111"

@@ -10,7 +10,6 @@ class ArticleCreate(BaseModel):
 class ArticleUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
-    image_path: Optional[str] = None
 
 class ArticleImage(BaseModel):
     id: int

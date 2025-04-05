@@ -4,7 +4,7 @@ from sqlalchemy.sql import func
 from src.db.database import Base
 from datetime import datetime
 from sqlalchemy import Enum as SAEnum
-from src.task.enums import TaskStatus
+from src.task.enums import TaskPriority, TaskStatus
 # Пользователи
 class User(Base):
     __tablename__ = "users"
@@ -58,7 +58,7 @@ class ArticleHistory(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"))
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
-    event: Mapped[str] = mapped_column(String(50))  # "create", "update", "delete", "image_create", "image_delete"
+    event: Mapped[str] = mapped_column(String(50))
     changed_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
 
 # Задачи
@@ -67,25 +67,22 @@ class Task(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(5000), nullable=True)
-    status: Mapped[str] = mapped_column(
-        SAEnum(TaskStatus, length=50), nullable=False, default=TaskStatus.ACTIVE
+    status: Mapped[TaskStatus] = mapped_column(
+        SAEnum(TaskStatus, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+        default=TaskStatus.ACTIVE
     )
-    priority: Mapped[str] = mapped_column(String(50), nullable=False)
+    priority: Mapped[TaskPriority] = mapped_column(
+        SAEnum(TaskPriority, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+        default=TaskPriority.MEDIUM
+    )
     due_date: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     assignee_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     deleted_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
-    images = relationship("TaskImage", back_populates="task")
-
-# Изображения задач
-class TaskImage(Base):
-    __tablename__ = "task_images"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), nullable=False)
-    image_path: Mapped[str] = mapped_column(String(255), nullable=False)
-    task = relationship("Task", back_populates="images")
 
 # История задач
 class TaskHistory(Base):
@@ -93,7 +90,7 @@ class TaskHistory(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"))
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
-    event: Mapped[str] = mapped_column(String(50))  # "create", "update", "delete", "image_create", "image_delete"
+    event: Mapped[str] = mapped_column(String(50))
     changed_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=func.now())
 
 # Чаты

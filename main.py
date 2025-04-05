@@ -15,6 +15,10 @@ import logging
 import asyncio
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.PROJECT_VERSION)
 
@@ -42,11 +46,11 @@ async def wait_for_db(max_attempts=10, delay=2):
 
 @app.on_event("startup")
 async def startup():
+    logger.info("Запуск приложения начат")
     try:
-        await wait_for_db()  # Ожидание базы данных
-        
-        async with engine.connect() as conn:
-            # Инициализация ролей
+        await wait_for_db()
+
+        async with engine.begin() as conn:
             result = await conn.execute(select(Role))
             roles = result.fetchall()
             if not roles:
@@ -57,34 +61,9 @@ async def startup():
                     ])
                 )
                 logger.info("Роли по умолчанию успешно созданы")
+            else:
+                logger.info("Роли уже существуют")
 
-            # Инициализация статусов задач
-            result = await conn.execute(select(TaskStatus))
-            statuses = result.fetchall()
-            if not statuses:
-                await conn.execute(
-                    TaskStatus.__table__.insert().values([
-                        {"status_id": 1, "status_name": "ACTIVE"},
-                        {"status_id": 2, "status_name": "POSTPONED"},
-                        {"status_id": 3, "status_name": "COMPLETED"}
-                    ])
-                )
-                logger.info("Статусы задач по умолчанию успешно созданы")
-
-            # Инициализация приоритетов задач
-            result = await conn.execute(select(TaskPriority))
-            priorities = result.fetchall()
-            if not priorities:
-                await conn.execute(
-                    TaskPriority.__table__.insert().values([
-                        {"priority_id": 1, "priority_name": "LOW"},
-                        {"priority_id": 2, "priority_name": "MEDIUM"},
-                        {"priority_id": 3, "priority_name": "HIGH"}
-                    ])
-                )
-                logger.info("Приоритеты задач по умолчанию успешно созданы")
-
-            # Инициализация администратора
             result = await conn.execute(select(User).where(User.email == "admin@example.com"))
             admin_user = result.scalar_one_or_none()
             if not admin_user:
@@ -102,8 +81,6 @@ async def startup():
             else:
                 logger.info("Стандартный администратор уже существует")
 
-            await conn.commit()  # Коммит всех изменений
-
         await db_startup()
         logger.info("Приложение успешно запущено")
     except Exception as e:
@@ -112,10 +89,16 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    """Очистка ресурсов при завершении работы приложения."""
+    logger.info("Завершение работы приложения начато")
     try:
         await engine.dispose()
         logger.info("Соединение с базой данных закрыто")
     except Exception as e:
         logger.error(f"Ошибка при завершении работы приложения: {e}")
         raise
+    finally:
+        logger.info("Приложение полностью остановлено")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

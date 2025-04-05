@@ -1,4 +1,5 @@
-from typing import List, Optional
+import os
+from typing import List, Optional, Union
 import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,30 +59,78 @@ async def create_article(
     
     return article
 
+
 @router.put("/{id}", response_model=ArticleResponse)
 async def update_article(
     id: int,
-    title: str = Form(None),
-    content: str = Form(None),
-    images: List[UploadFile] = File([]),
+    title: Optional[str] = Form(default=None),
+    content: Optional[str] = Form(default=None),
+    images: List[UploadFile] = File(default=[]),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     result = await db.execute(select(Article).where(Article.id == id, Article.is_deleted == False))
     article = result.scalar_one_or_none()
-    if not article or article.author_id != current_user.user_id and current_user.role_id != 2:
-        raise HTTPException(status_code=403, detail="Not authorized")
     
-    if title:
+    if not article or (article.author_id != current_user.user_id and current_user.role_id != 2):
+        raise HTTPException(status_code=403, detail="Не авторизовано")
+    
+    if title is not None:
         article.title = title
-    if content:
+    if content is not None:
         article.content = content
-    for image in images:
-        file_path = f"{settings.UPLOAD_DIR}/article_{article.id}_{image.filename}"
-        async with aiofiles.open(file_path, 'wb') as out_file:
-            content = await image.read()
-            await out_file.write(content)
-        db.add(ArticleImage(article_id=article.id, image_path=file_path))
+    
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    
+    if images:
+        for image in images:
+            file_path = f"{settings.UPLOAD_DIR}/article_{article.id}_{image.filename}"
+            try:
+                async with aiofiles.open(file_path, 'wb') as out_file:
+                    content = await image.read()
+                    await out_file.write(content)
+                db.add(ArticleImage(article_id=article.id, image_path=file_path))
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Ошибка при сохранении изображения: {str(e)}")
+    
+    await db.commit()
+    await db.refresh(article)
+    return article
+
+@router.put("/{id}", response_model=ArticleResponse)
+async def update_article(
+    id: int,
+    title: Optional[str] = Form(default=None),
+    content: Optional[str] = Form(default=None),
+    images: Optional[Union[UploadFile, List[UploadFile]]] = File(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(select(Article).where(Article.id == id, Article.is_deleted == False))
+    article = result.scalar_one_or_none()
+    
+    if not article or (article.author_id != current_user.user_id and current_user.role_id != 2):
+        raise HTTPException(status_code=403, detail="Не авторизовано")
+    
+    if title is not None:
+        article.title = title
+    if content is not None:
+        article.content = content
+    
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    
+    if images:
+        image_list = [images] if isinstance(images, UploadFile) else images
+        for image in image_list:
+            file_path = f"{settings.UPLOAD_DIR}/article_{article.id}_{image.filename}"
+            try:
+                async with aiofiles.open(file_path, 'wb') as out_file:
+                    content = await image.read()
+                    await out_file.write(content)
+                db.add(ArticleImage(article_id=article.id, image_path=file_path))
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Ошибка при сохранении изображения: {str(e)}")
+    
     await db.commit()
     await db.refresh(article)
     return article

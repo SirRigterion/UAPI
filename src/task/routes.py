@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func
 from src.auth.auth import get_current_user
-from src.db.models import User, Task, TaskImage, TaskHistory
+from src.db.models import User, Task, TaskHistory
 from src.db.database import get_db
 from src.task.schemas import TaskCreate, TaskResponse, TaskStatus
 from typing import Optional, List
@@ -64,7 +64,6 @@ async def create_task(
         async with aiofiles.open(file_path, 'wb') as out_file:
             content = await image.read()
             await out_file.write(content)
-        db.add(TaskImage(task_id=task.id, image_path=file_path))
         db.add(TaskHistory(task_id=task.id, user_id=current_user.user_id, event="image_create"))
     
     await db.commit()
@@ -132,7 +131,6 @@ async def update_task(
         async with aiofiles.open(file_path, 'wb') as out_file:
             content = await image.read()
             await out_file.write(content)
-        db.add(TaskImage(task_id=task.id, image_path=file_path))
         db.add(TaskHistory(task_id=task.id, user_id=current_user.user_id, event="image_create"))
     
     await db.commit()

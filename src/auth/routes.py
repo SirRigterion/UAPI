@@ -47,7 +47,6 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login")
 async def login(user: UserLogin, db: AsyncSession = Depends(get_db)):
-    """Вход пользователя в систему."""
     try:
         result = await db.execute(select(User).where(User.email == user.email))
         db_user = result.scalar_one_or_none()
