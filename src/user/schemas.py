@@ -16,6 +16,10 @@ class UserProfile(BaseModel):
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    avatar: Optional[str] = None
+    role_id: Optional[int] = None
     
 class UserSearch(BaseModel):
     limit: int = 10  

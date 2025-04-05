@@ -1,20 +1,5 @@
 from datetime import datetime
-import aiofiles
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlalchemy import func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from src.auth.auth import get_current_user
-from src.db.models import TaskHistory, User, Task
-from src.task.enums import TaskPriority, TaskStatus
-from src.db.database import get_db
-from src.task.schemas import TaskCreate, TaskResponse
-from src.core.config import settings
-from typing import List, Optional
-
-router = APIRouter(prefix="/tasks", tags=["tasks"])
-
-from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func
@@ -23,16 +8,13 @@ from src.db.models import User, Task, TaskHistory
 from src.db.database import get_db
 from src.task.schemas import TaskCreate, TaskResponse, TaskStatus
 from typing import Optional, List
-import aiofiles
-from src.core.config import settings
-import os
+from task.enums import TaskPriority
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 @router.post("/", response_model=TaskResponse)
 async def create_task(
     task_data: TaskCreate = Depends(),
-    images: List[UploadFile] = File([]),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -51,21 +33,7 @@ async def create_task(
         assignee_id=task_data.assignee_id
     )
     db.add(task)
-    await db.commit()
-    await db.refresh(task)
-
-    # Добавляем запись о создании задачи
     db.add(TaskHistory(task_id=task.id, user_id=current_user.user_id, event="create"))
-
-    # Сохранение изображений
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    for image in images:
-        file_path = f"{settings.UPLOAD_DIR}/task_{task.id}_{image.filename}"
-        async with aiofiles.open(file_path, 'wb') as out_file:
-            content = await image.read()
-            await out_file.write(content)
-        db.add(TaskHistory(task_id=task.id, user_id=current_user.user_id, event="image_create"))
-    
     await db.commit()
     await db.refresh(task)
     return task
@@ -98,7 +66,6 @@ async def update_task(
     priority: Optional[TaskPriority] = Form(None),
     due_date: Optional[datetime] = Form(None),
     assignee_id: Optional[int] = Form(None),
-    images: List[UploadFile] = File([]),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -125,14 +92,6 @@ async def update_task(
         task.assignee_id = assignee_id
 
     db.add(TaskHistory(task_id=task.id, user_id=current_user.user_id, event="update"))
-    
-    for image in images:
-        file_path = f"{settings.UPLOAD_DIR}/task_{task.id}_{image.filename}"
-        async with aiofiles.open(file_path, 'wb') as out_file:
-            content = await image.read()
-            await out_file.write(content)
-        db.add(TaskHistory(task_id=task.id, user_id=current_user.user_id, event="image_create"))
-    
     await db.commit()
     await db.refresh(task)
     return task

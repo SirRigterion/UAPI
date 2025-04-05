@@ -36,10 +36,9 @@ class ArticleHistoryResponse(BaseModel):
     article_id: int
     user_id: int
     event: str
+    changed_title: Optional[str]
+    changed_content: Optional[str]
     changed_at: datetime
-    title: str
-    content: str
-    image_path: Optional[str]
     edited_at: datetime
 
     class Config:

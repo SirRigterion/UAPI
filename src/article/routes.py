@@ -175,13 +175,23 @@ async def get_article_history(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    result = await db.execute(select(Article).where(Article.id == id))
+    result = await db.execute(
+        select(Article)
+        .where(Article.id == id, Article.is_deleted == False)
+    )
     article = result.scalar_one_or_none()
+    
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
+    
     if article.author_id != current_user.user_id and current_user.role_id != 2:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    result = await db.execute(select(ArticleHistory).where(ArticleHistory.article_id == id))
+    result = await db.execute(
+        select(ArticleHistory)
+        .where(ArticleHistory.article_id == id)
+        .order_by(ArticleHistory.changed_at.desc())
+    )
     history = result.scalars().all()
+    
     return history
