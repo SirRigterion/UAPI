@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -48,6 +48,71 @@ async def update_user_password(
     user.hashed_password = hash_password(new_password)
     await db.commit()
     return {"message": "Пароль обновлен"}
+
+@router.put("/users/{user_id}", response_model=UserProfile)
+async def update_user(
+    user_id: int,
+    username: Optional[str] = Form(None),
+    full_name: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    avatar: Optional[str] = Form(None),
+    role_id: Optional[int] = Form(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Проверка прав доступа (только админ)
+    if current_user.role_id != 2:
+        raise HTTPException(status_code=403, detail="Не авторизовано")
+    
+    # Получаем пользователя для редактирования
+    result = await db.execute(
+        select(User)
+        .where(User.user_id == user_id, User.is_deleted == False)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    # Запрещаем редактирование других админов
+    if user.role_id == 2 and user.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Нельзя редактировать других администраторов")
+    
+    # Обновляем поля, если они переданы
+    if username is not None:
+        # Проверяем уникальность username
+        existing_user = await db.execute(
+            select(User)
+            .where(User.username == username, User.user_id != user_id)
+        )
+        if existing_user.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Имя пользователя уже занято")
+        user.username = username
+    
+    if full_name is not None:
+        user.full_name = full_name
+    
+    if email is not None:
+        # Проверяем уникальность email
+        existing_email = await db.execute(
+            select(User)
+            .where(User.email == email, User.user_id != user_id)
+        )
+        if existing_email.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email уже используется")
+        user.email = email
+    
+    if avatar is not None:
+        user.avatar = avatar
+    
+    if role_id is not None:
+        if role_id == 2:
+            raise HTTPException(status_code=403, detail="Нельзя назначать роль администратора через этот эндпоинт")
+        user.role_id = role_id
+    
+    await db.commit()
+    await db.refresh(user)
+    return user
 
 @router.delete("/users/{user_id}", response_model=dict)
 async def delete_user(

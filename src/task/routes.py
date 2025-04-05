@@ -8,7 +8,7 @@ from src.db.models import User, Task, TaskHistory
 from src.db.database import get_db
 from src.task.schemas import TaskCreate, TaskResponse, TaskStatus
 from typing import Optional, List
-from task.enums import TaskPriority
+from src.task.enums import TaskPriority
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
